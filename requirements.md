@@ -1,3 +1,8 @@
+TODO
+- HyperLogLog
+- Priority Queue / Heap for getting most visited sections
+- Simple moving average or any other https://en.wikipedia.org/wiki/Moving_average#Simple_moving_average
+
 ***********************************
 
 HTTP log monitoring console program
