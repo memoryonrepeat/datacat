@@ -1,0 +1,14 @@
+{
+  "name": "log-tracker",
+  "version": "0.0.1",
+  "description": "simple http log monitoring utility",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Thanh Nguyen <tienthanh8490@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "tail": "^2.0.4"
+  }
+}
