@@ -9,6 +9,7 @@
   "author": "Thanh Nguyen <tienthanh8490@gmail.com>",
   "license": "ISC",
   "dependencies": {
+    "dayjs": "^1.9.6",
     "tail": "^2.0.4"
   }
 }

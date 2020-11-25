@@ -11,3 +11,17 @@ Where to get logs:
 - http://mail.euroinsol.eu/logs/access.log (access.log)
 
 - https://github.com/linuxacademy/content-elastic-log-samples (access2.log)
+
+
+Improvements:
+
+- https://medium.com/@thomaspoignant/algorithmic-design-a-hit-counter-4bc6400152a
+
+- Use Redis hash with expire --> no need to manually remove old entries
+- Count-Min data structure
+- "Design hit counter" problem
+- ring / circular buffer
+- binary search (maybe no)
+- distributed counter
+- locking counter to prevent race condition
+- amortized analysis
