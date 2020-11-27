@@ -11,5 +11,8 @@
   "dependencies": {
     "dayjs": "^1.9.6",
     "tail": "^2.0.4"
+  },
+  "devDependencies": {
+    "mocha": "^8.2.1"
   }
 }

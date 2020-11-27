@@ -25,3 +25,4 @@ Improvements:
 - distributed counter
 - locking counter to prevent race condition
 - amortized analysis
+- cache to avoid recalculation
