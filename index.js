@@ -1,5 +1,6 @@
 const dayjs = require('dayjs')
 const customParseFormat = require('dayjs/plugin/customParseFormat')
+const Tail = require('tail').Tail
 
 dayjs.extend(customParseFormat)
 
@@ -11,18 +12,31 @@ class DataCat {
     this.TIME_REGEX = /\[(.*?)\]/
     this.ACTION_REGEX = /\"(.*?)\"/
     this.TOTAL_HITS_INTERVAL = 120
-    this.SUMMARY_INTERVAL = 10
+    this.SUMMARY_INTERVAL = 3
     this.ALERTING_CRON_INTERVAL = 1000
     this.totalHitsTracker = {}
     this.sectionHitsTracker = {}
     this.isOnAlert = false
     this.alertingCronId = null
 
-    setInterval(this.summarizeTraffic(), 10000)
+    this.tail = new Tail(this.logPath)
+
+    this.tail.on('line', (line) => {
+      console.log('New log', line)
+      this.update(line)
+    })
+
+    this.tail.on('error', (error) => {
+      console.log('Error during log parsing', error)
+    })
+
+    setInterval(() => {
+      this.summarizeTraffic()
+    }, this.SUMMARY_INTERVAL * 1000)
   }
 
-  getTimestampInSeconds (time) {
-    return Math.floor(dayjs(time, FORMAT).unix()
+  _getTimestampInSeconds (time) {
+    return Math.floor(dayjs(time, this.FORMAT).unix()
       .valueOf())
   }
 
@@ -35,10 +49,10 @@ class DataCat {
   }
 
   update (log) {
-    const logTimestamp = this._parseLog(log, this.TIME_REGEX)
+    const logTimestamp = parseInt(this._parseLog(log, this.TIME_REGEX), 10)
 
-    this.updateTotalHits(log, timestamp)
-    this.updateSummary(log, timestamp)
+    this.updateTotalHits(log, logTimestamp)
+    this.updateSummary(log, logTimestamp)
   }
 
   updateTotalHits (log, timestamp) {
@@ -65,9 +79,12 @@ class DataCat {
   getAverageTotalHits () {
     const currentTimestamp = dayjs().unix()
 
-    return Math.floor(this.totalHitsTracker.filter(
-      (slot) => (currentTimestamp - slot.timestamp <= this.TOTAL_HITS_INTERVAL)
-    ).reduce((prev, curr) => prev + curr.total, 0) / this.TOTAL_HITS_INTERVAL)
+    console.log(this.totalHitsTracker)
+
+    return Math.floor(Object.keys(this.totalHitsTracker).filter(
+      (slot) => (currentTimestamp - this.totalHitsTracker[slot].timestamp <= this.TOTAL_HITS_INTERVAL)
+    )
+      .reduce((prev, curr) => prev + curr.total, 0) / this.TOTAL_HITS_INTERVAL)
   }
 
   // Check if alert should be turned on/off and adjust accordingly
@@ -100,7 +117,7 @@ class DataCat {
   }
 
   updateSummary (log, timestamp) {
-    const section = this._parseSection(this._parseLog(log, ACTION_REGEX))
+    const section = this._parseSection(this._parseLog(log, this.ACTION_REGEX))
 
     const slot = timestamp % this.SUMMARY_INTERVAL
 
@@ -120,8 +137,36 @@ class DataCat {
   }
 
   summarizeTraffic () {
+    const timestamp = dayjs().unix()
+    let mostHitSection = null
+    let maxHit = 0
+    const sectionCounter = {}
 
+    for (const slot in this.sectionHitsTracker) {
+      if (timestamp - this.sectionHitsTracker[slot].timestamp > this.SUMMARY_INTERVAL) {
+        continue // old slot --> skip
+      }
+
+      const sections = this.sectionHitsTracker[slot].sections
+
+      for (const section in this.sectionHitsTracker[slot].sections) {
+        sectionCounter[section] = (sectionCounter[section] || 0) + this.sectionHitsTracker[slot].sections[section]
+
+        if (sectionCounter[section] > maxHit) {
+          maxHit = sectionCounter[section]
+          mostHitSection = section
+        }
+      }
+    }
+
+    if (mostHitSection) {
+      console.log(`Most hit section: ${mostHitSection} - hits = ${maxHit}`)
+    } else {
+      console.log(`No traffic during last ${this.SUMMARY_INTERVAL} seconds`)
+    }
   }
 }
+
+const dataCat = new DataCat('simple.log')
 
 module.exports = DataCat
