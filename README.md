@@ -26,3 +26,4 @@ Improvements:
 - locking counter to prevent race condition
 - amortized analysis
 - cache to avoid recalculation
+- estimate least time to wait until average returns to normal instead of checking every second
