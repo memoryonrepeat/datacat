@@ -60,34 +60,48 @@ describe('DataCat', () => {
     const dataCat = new DataCat('summarize.log')
 
     it('should correctly derive the most hit section', () => {
+      const log0 = '82.143.5.103 - - [29/Nov/2020:18:14:00 +0000] "GET /public/user/login.php HTTP/1.1" 200 999'
       const log1 = '83.149.9.216 - - [29/Nov/2020:18:14:00 +0000] "GET /public/metrics/summarize.php HTTP/1.1" 200 999'
       const log2 = '81.223.7.234 - - [29/Nov/2020:18:14:00 +0000] "GET /public/users/list.php HTTP/1.1" 200 999'
       const log3 = '84.112.6.105 - - [29/Nov/2020:18:14:00 +0000] "GET /health/status.php HTTP/1.1" 200 999'
 
+      // This log is older than current time and shouldn't be counted
+      for (let i = 0; i < 3; i++) {
+        dataCat.updateSummary(log1, dataCat._getTimestamp() - 1)
+      }
+
+      // This should be counted for /public section
       for (let i = 0; i < 6; i++) {
         dataCat.updateSummary(log1, dataCat._getTimestamp())
       }
 
+      // This should also be counted for /public section
       for (let i = 0; i < 4; i++) {
         dataCat.updateSummary(log2, dataCat._getTimestamp())
       }
 
+      // This should be counted for /health section
       for (let i = 0; i < 9; i++) {
         dataCat.updateSummary(log3, dataCat._getTimestamp())
       }
 
       dataCat.summarizeTraffic()
 
+      // The most hit section is /public , total hits = 10
+      // with 6 hits from /public/metrics/summarize.php
+      // and 4 hits from /public/users/list.php
       expect(dataCat.mostHitSection).to.be.equal('public')
       expect(dataCat.maxHit).to.be.equal(10)
       expect(dataCat.sectionCounter).to.deep.equalInAnyOrder({public: 10, health: 9})
 
+      // Now we increase traffic to /health section to make it the most hit section
       for (let i = 0; i < 5; i++) {
         dataCat.updateSummary(log3, dataCat._getTimestamp())
       }
 
       dataCat.summarizeTraffic()
 
+      // The most hit section is now /health , total hits = 9+5 = 14
       expect(dataCat.mostHitSection).to.be.equal('health')
       expect(dataCat.maxHit).to.be.equal(14)
       expect(dataCat.sectionCounter).to.deep.equalInAnyOrder({public: 10, health: 14})

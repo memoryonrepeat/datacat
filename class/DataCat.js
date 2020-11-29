@@ -88,10 +88,6 @@ class DataCat {
     if (shouldUpdateSummary) {
       this.updateSummary(log, timestamp)
     }
-
-    console.log('timestamp', timestamp)
-    console.log('totalHitsTracker', this.totalHitsTracker)
-    console.log('sectionHitsTracker', this.sectionHitsTracker)
   }
 
   updateTotalHits (timestamp) {
@@ -136,8 +132,6 @@ class DataCat {
   // Check if alert should be turned on/off and adjust accordingly
   revisitAlertState () {
     const averageTotalHits = this.getAverageTotalHits()
-
-    console.log({averageTotalHits, tracker: this.totalHitsTracker})
 
     if (averageTotalHits > this.threshold) {
       this.isOnAlert = true
