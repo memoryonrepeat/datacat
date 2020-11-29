@@ -4,7 +4,7 @@
   "description": "simple http log monitoring utility",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha"
   },
   "author": "Thanh Nguyen <tienthanh8490@gmail.com>",
   "license": "ISC",
