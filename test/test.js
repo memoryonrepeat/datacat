@@ -60,10 +60,10 @@ describe('DataCat', () => {
     const dataCat = new DataCat('summarize.log')
 
     it('should correctly derive the most hit section', () => {
-      const log0 = '82.143.5.103 - - [29/Nov/2020:18:14:00 +0000] "GET /public/user/login.php HTTP/1.1" 200 999'
-      const log1 = '83.149.9.216 - - [29/Nov/2020:18:14:00 +0000] "GET /public/metrics/summarize.php HTTP/1.1" 200 999'
-      const log2 = '81.223.7.234 - - [29/Nov/2020:18:14:00 +0000] "GET /public/users/list.php HTTP/1.1" 200 999'
-      const log3 = '84.112.6.105 - - [29/Nov/2020:18:14:00 +0000] "GET /health/status.php HTTP/1.1" 200 999'
+      const log0 = '82.143.5.103 - john [29/Nov/2020:18:14:00 +0000] "GET /public/user/login.php HTTP/1.1" 200 999'
+      const log1 = '83.149.9.216 - joanna [29/Nov/2020:18:14:00 +0000] "GET /public/metrics/summarize.php HTTP/1.1" 200 999'
+      const log2 = '81.223.7.234 - james [29/Nov/2020:18:14:00 +0000] "GET /public/users/list.php HTTP/1.1" 200 999'
+      const log3 = '84.112.6.105 - jane [29/Nov/2020:18:14:00 +0000] "GET /health/status.php HTTP/1.1" 200 999'
 
       // This log is older than current time and shouldn't be counted
       for (let i = 0; i < 3; i++) {

@@ -54,7 +54,12 @@ class DataCat {
   }
 
   consumeLogs () {
-    this.tail = new Tail(this.logPath)
+    try {
+      this.tail = new Tail(this.logPath)
+    } catch (err) {
+      console.log('Error while opening log file.', err)
+      return
+    }
 
     console.log(`Ready to consume new logs from ${this.logPath} file.`)
 
