@@ -18,6 +18,10 @@ class DataCat {
     this.sectionHitsTracker = {}
     this.isOnAlert = false
     this.alertingCronId = null
+
+    if (this.interval === 0) {
+      throw new Error('Interval must be a positive number')
+    }
   }
 
   _getTimestamp (time) {
@@ -86,6 +90,13 @@ class DataCat {
   }
 
   updateTotalHits (timestamp) {
+    const currentTimestamp = this._getTimestamp()
+
+    if (timestamp < currentTimestamp) {
+      console.log(`Skipping since log timestamp (${timestamp}) is older than current timestamp ${currentTimestamp}`)
+      return
+    }
+
     const slot = timestamp % this.TOTAL_HITS_INTERVAL
 
     if (slot in this.totalHitsTracker === false) {
@@ -95,11 +106,13 @@ class DataCat {
       return
     }
 
-    // If current slot is older than 2 minutes, reset it
+    // If current slot is older than interval, reset it
     // Else increase counter
-    if (timestamp - this.totalHitsTracker[slot].timestamp > this.TOTAL_HITS_INTERVAL) {
+    if (currentTimestamp - this.totalHitsTracker[slot].timestamp > this.TOTAL_HITS_INTERVAL) {
+      console.log('resetting', timestamp, this.totalHitsTracker[slot].timestamp, timestamp - this.totalHitsTracker[slot].timestamp)
       this.totalHitsTracker[slot] = {timestamp, total: 1}
     } else {
+      this.totalHitsTracker[slot].timestamp = timestamp
       this.totalHitsTracker[slot].total += 1
     }
 
@@ -109,10 +122,11 @@ class DataCat {
   getAverageTotalHits () {
     const currentTimestamp = this._getTimestamp()
 
-    return Math.floor(Object.keys(this.totalHitsTracker).filter(
-      (slot) => (currentTimestamp - this.totalHitsTracker[slot].timestamp <= this.TOTAL_HITS_INTERVAL)
-    )
-      .reduce((prev, curr) => (prev + this.totalHitsTracker[curr].total), 0) / this.TOTAL_HITS_INTERVAL)
+    return Object.keys(this.totalHitsTracker)
+      .filter(
+        (slot) => (currentTimestamp - this.totalHitsTracker[slot].timestamp <= this.TOTAL_HITS_INTERVAL)
+      )
+      .reduce((prev, curr) => (prev + this.totalHitsTracker[curr].total), 0) / this.TOTAL_HITS_INTERVAL
   }
 
   // Check if alert should be turned on/off and adjust accordingly

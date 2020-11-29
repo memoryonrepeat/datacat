@@ -27,3 +27,4 @@ Improvements:
 - amortized analysis
 - cache to avoid recalculation
 - estimate least time to wait until average returns to normal instead of checking every second
+- not rounding average hits for more accurate estimation
