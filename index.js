@@ -6,33 +6,18 @@ dayjs.extend(customParseFormat)
 
 class DataCat {
   constructor (logPath, threshold) {
-    this.logPath = logPath
-    this.threshold = threshold
+    this.logPath = logPath || '/tmp/access.log'
+    this.threshold = threshold || 10
     this.FORMAT = 'DD/MMM/YYYY:HH:mm:ss ZZ'
     this.TIME_REGEX = /\[(.*?)\]/
     this.ACTION_REGEX = /\"(.*?)\"/
-    this.TOTAL_HITS_INTERVAL = 120
-    this.SUMMARY_INTERVAL = 10
-    this.ALERTING_CRON_INTERVAL = 1000
+    this.TOTAL_HITS_INTERVAL = 120 // Length of total hits window, default to 2 minutes
+    this.SUMMARY_INTERVAL = 10 // Length of summary window, default to 10 seconds
+    this.ALERTING_CRON_INTERVAL = 1 // Length of alerting cron, default to 1 second
     this.totalHitsTracker = {}
     this.sectionHitsTracker = {}
     this.isOnAlert = false
     this.alertingCronId = null
-
-    this.tail = new Tail(this.logPath)
-
-    this.tail.on('line', (line) => {
-      console.log('New log', line)
-      this.update(line)
-    })
-
-    this.tail.on('error', (error) => {
-      console.log('Error during log parsing', error)
-    })
-
-    setInterval(() => {
-      this.summarizeTraffic()
-    }, this.SUMMARY_INTERVAL * 1000)
   }
 
   _getTimestampInSeconds (time) {
@@ -55,6 +40,23 @@ class DataCat {
     }
 
     return action.split(' ')[1].split('/')[1]
+  }
+
+  consumeLogs () {
+    this.tail = new Tail(this.logPath)
+
+    this.tail.on('line', (line) => {
+      console.log('New log', line)
+      this.update(line)
+    })
+
+    this.tail.on('error', (error) => {
+      console.log('Error during log parsing', error)
+    })
+
+    setInterval(() => {
+      this.summarizeTraffic()
+    }, this.SUMMARY_INTERVAL * 1000)
   }
 
   update (log) {
@@ -103,25 +105,27 @@ class DataCat {
     return Math.floor(Object.keys(this.totalHitsTracker).filter(
       (slot) => (currentTimestamp - this.totalHitsTracker[slot].timestamp <= this.TOTAL_HITS_INTERVAL)
     )
-      .reduce((prev, curr) => prev + curr.total, 0) / this.TOTAL_HITS_INTERVAL)
+      .reduce((prev, curr) => (prev + this.totalHitsTracker[curr].total), 0) / this.TOTAL_HITS_INTERVAL)
   }
 
   // Check if alert should be turned on/off and adjust accordingly
   revisitAlertState () {
     const averageTotalHits = this.getAverageTotalHits()
 
+    console.log({averageTotalHits, tracker: this.totalHitsTracker})
+
     if (averageTotalHits > this.threshold) {
       this.isOnAlert = true
 
       console.log(`High traffic generated an alert - hits = ${averageTotalHits}, triggered at ${dayjs().format(this.FORMAT)}`)
 
-      if (this.alertingCron !== null) {
+      if (this.alertingCronId !== null) {
         return
       }
 
       this.alertingCronId = setInterval(() => {
         this.revisitAlertState()
-      }, this.ALERTING_CRON_INTERVAL)
+      }, this.ALERTING_CRON_INTERVAL * 1000)
     } else {
       if (this.isOnAlert === true) {
         this.isOnAlert = false
@@ -197,6 +201,8 @@ class DataCat {
   }
 }
 
-const dataCat = new DataCat('simple.log')
+const dataCat = new DataCat('simple.log', 5)
+
+dataCat.consumeLogs()
 
 module.exports = DataCat
