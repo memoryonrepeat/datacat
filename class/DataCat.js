@@ -18,6 +18,9 @@ class DataCat {
     this.sectionHitsTracker = {}
     this.isOnAlert = false
     this.alertingCronId = null
+    this.mostHitSection = null
+    this.maxHit = 0
+    this.sectionCounter = {}
 
     if (this.interval === 0) {
       throw new Error('Interval must be a positive number')
@@ -52,6 +55,8 @@ class DataCat {
 
   consumeLogs () {
     this.tail = new Tail(this.logPath)
+
+    console.log(`Ready to consume new logs from ${this.logPath} file.`)
 
     this.tail.on('line', (line) => {
       console.log('New log', line)
@@ -93,7 +98,7 @@ class DataCat {
     const currentTimestamp = this._getTimestamp()
 
     if (timestamp < currentTimestamp) {
-      console.log(`Skipping since log timestamp (${timestamp}) is older than current timestamp ${currentTimestamp}`)
+      console.log(`Skipping since log timestamp ${timestamp} is older than current timestamp ${currentTimestamp}`)
       return
     }
 
@@ -109,10 +114,9 @@ class DataCat {
     // If current slot is older than interval, reset it
     // Else increase counter
     if (currentTimestamp - this.totalHitsTracker[slot].timestamp > this.TOTAL_HITS_INTERVAL) {
-      console.log('resetting', timestamp, this.totalHitsTracker[slot].timestamp, timestamp - this.totalHitsTracker[slot].timestamp)
       this.totalHitsTracker[slot] = {timestamp, total: 1}
     } else {
-      this.totalHitsTracker[slot].timestamp = timestamp
+      // this.totalHitsTracker[slot].timestamp = timestamp
       this.totalHitsTracker[slot].total += 1
     }
 
@@ -161,6 +165,13 @@ class DataCat {
   }
 
   updateSummary (log, timestamp) {
+    const currentTimestamp = this._getTimestamp()
+
+    if (timestamp < currentTimestamp) {
+      console.log(`Skipping since log timestamp ${timestamp} is older than current timestamp ${currentTimestamp}`)
+      return
+    }
+
     let section
 
     try {
@@ -181,7 +192,7 @@ class DataCat {
 
     // If current slot is older than 10 seconds, reset it
     // Else increase counter
-    if (timestamp - this.sectionHitsTracker[slot].timestamp > this.SUMMARY_INTERVAL) {
+    if (currentTimestamp - this.sectionHitsTracker[slot].timestamp > this.SUMMARY_INTERVAL) {
       this.sectionHitsTracker[slot] = {timestamp, sections: {[section]: 1}}
     } else {
       this.sectionHitsTracker[slot].sections[section] = (this.sectionHitsTracker[slot].sections[section] || 0) + 1
@@ -189,36 +200,35 @@ class DataCat {
   }
 
   summarizeTraffic () {
-    const timestamp = this._getTimestamp()
-    let mostHitSection = null
-    let maxHit = 0
-    const sectionCounter = {}
+    const currentTimestamp = this._getTimestamp()
+
+    this.sectionCounter = {}
+    this.mostHitSection = null
+    this.maxHit = 0
 
     for (const slot in this.sectionHitsTracker) {
-      if (timestamp - this.sectionHitsTracker[slot].timestamp > this.SUMMARY_INTERVAL) {
-        console.log('old slot', timestamp, this.sectionHitsTracker[slot].timestamp, timestamp - this.sectionHitsTracker[slot].timestamp)
+      if (currentTimestamp - this.sectionHitsTracker[slot].timestamp > this.SUMMARY_INTERVAL) {
         continue // old slot --> skip
       }
 
       const sections = this.sectionHitsTracker[slot].sections
 
       for (const section in this.sectionHitsTracker[slot].sections) {
-        sectionCounter[section] = (sectionCounter[section] || 0) + this.sectionHitsTracker[slot].sections[section]
+        this.sectionCounter[section] = (this.sectionCounter[section] || 0) + this.sectionHitsTracker[slot].sections[section]
 
-        if (sectionCounter[section] > maxHit) {
-          maxHit = sectionCounter[section]
-          mostHitSection = section
+        if (this.sectionCounter[section] > this.maxHit) {
+          this.maxHit = this.sectionCounter[section]
+          this.mostHitSection = section
         }
       }
     }
 
-    console.log('sectionCounter', sectionCounter)
-
-    if (mostHitSection) {
-      console.log(`Most hit section during last ${this.SUMMARY_INTERVAL} seconds : ${mostHitSection} . Hits = ${maxHit}`)
-    } else {
-      console.log(`No traffic during last ${this.SUMMARY_INTERVAL} seconds`)
+    if (this.mostHitSection) {
+      console.log(`Most hit section during last ${this.SUMMARY_INTERVAL} seconds : ${this.mostHitSection} . Hits = ${this.maxHit}`)
+      return
     }
+
+    console.log(`No traffic during last ${this.SUMMARY_INTERVAL} seconds`)
   }
 }
 
