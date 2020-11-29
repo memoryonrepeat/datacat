@@ -12,7 +12,7 @@ class DataCat {
     this.TIME_REGEX = /\[(.*?)\]/
     this.ACTION_REGEX = /\"(.*?)\"/
     this.TOTAL_HITS_INTERVAL = 120
-    this.SUMMARY_INTERVAL = 3
+    this.SUMMARY_INTERVAL = 10
     this.ALERTING_CRON_INTERVAL = 1000
     this.totalHitsTracker = {}
     this.sectionHitsTracker = {}
@@ -36,23 +36,44 @@ class DataCat {
   }
 
   _getTimestampInSeconds (time) {
-    return Math.floor(dayjs(time, this.FORMAT).unix()
-      .valueOf())
+    return dayjs(time, this.FORMAT).unix()
   }
 
   _parseLog (log, regex) {
+    const match = log.match(regex)
+
+    if (!match) {
+      throw new Error('Unable to parse log with wrong format. Log: ', log)
+    }
+
     return log.match(regex)[1]
   }
 
   _parseSection (action) {
+    if (!action) {
+      throw new Error('Unable to parse action with wrong format. Action: ', action)
+    }
+
     return action.split(' ')[1].split('/')[1]
   }
 
   update (log) {
-    const logTimestamp = parseInt(this._parseLog(log, this.TIME_REGEX), 10)
+    let timestamp
 
-    this.updateTotalHits(log, logTimestamp)
-    this.updateSummary(log, logTimestamp)
+    try {
+      timestamp = this._getTimestampInSeconds(this._parseLog(log, this.TIME_REGEX))
+    } catch (err) {
+      console.log('Error during log parsing. Skipping this log.')
+
+      return
+    }
+
+    this.updateTotalHits(log, timestamp)
+    this.updateSummary(log, timestamp)
+
+    console.log('timestamp', timestamp)
+    console.log('totalHitsTracker', this.totalHitsTracker)
+    console.log('sectionHitsTracker', this.sectionHitsTracker)
   }
 
   updateTotalHits (log, timestamp) {
@@ -78,8 +99,6 @@ class DataCat {
 
   getAverageTotalHits () {
     const currentTimestamp = dayjs().unix()
-
-    console.log(this.totalHitsTracker)
 
     return Math.floor(Object.keys(this.totalHitsTracker).filter(
       (slot) => (currentTimestamp - this.totalHitsTracker[slot].timestamp <= this.TOTAL_HITS_INTERVAL)
@@ -117,7 +136,15 @@ class DataCat {
   }
 
   updateSummary (log, timestamp) {
-    const section = this._parseSection(this._parseLog(log, this.ACTION_REGEX))
+    let section
+
+    try {
+      section = this._parseSection(this._parseLog(log, this.ACTION_REGEX))
+    } catch (err) {
+      console.log('Error during log parsing. Skipping this log.')
+
+      return
+    }
 
     const slot = timestamp % this.SUMMARY_INTERVAL
 
@@ -144,6 +171,7 @@ class DataCat {
 
     for (const slot in this.sectionHitsTracker) {
       if (timestamp - this.sectionHitsTracker[slot].timestamp > this.SUMMARY_INTERVAL) {
+        console.log('old slot', timestamp, this.sectionHitsTracker[slot].timestamp, timestamp - this.sectionHitsTracker[slot].timestamp)
         continue // old slot --> skip
       }
 
@@ -159,8 +187,10 @@ class DataCat {
       }
     }
 
+    console.log('sectionCounter', sectionCounter)
+
     if (mostHitSection) {
-      console.log(`Most hit section: ${mostHitSection} - hits = ${maxHit}`)
+      console.log(`Most hit section during last ${this.SUMMARY_INTERVAL} seconds : ${mostHitSection} . Hits = ${maxHit}`)
     } else {
       console.log(`No traffic during last ${this.SUMMARY_INTERVAL} seconds`)
     }
