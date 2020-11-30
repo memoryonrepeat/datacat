@@ -4,6 +4,7 @@
   "description": "simple http log monitoring utility",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "mocha"
   },
   "author": "Thanh Nguyen <tienthanh8490@gmail.com>",
